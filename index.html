@@ -5,7 +5,6 @@
   <title>Detroit Council Districts</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Leaflet -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -18,86 +17,85 @@
       margin: 0;
     }
 
-    /* 选区文字样式（无白底） */
     .district-label {
       font-size: 16px;
       font-weight: 700;
       color: #000;
       white-space: nowrap;
-      transform-origin: center center;
       pointer-events: none;
+      transform-origin: center center;
     }
   </style>
 </head>
+
 <body>
-  <div id="map"></div>
+<div id="map"></div>
 
-  <script>
-    const map = L.map('map').setView([42.35, -83.1], 11);
+<script>
+  const map = L.map('map').setView([42.35, -83.1], 11);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
 
-    // 记录所有标签 DOM
-    const labelElements = [];
+  fetch('District.geojson')
+    .then(res => res.json())
+    .then(data => {
 
-    fetch('District.geojson')
-      .then(res => res.json())
-      .then(data => {
+      const layer = L.geoJSON(data, {
+        style: f => ({
+          color: '#333',
+          weight: 1,
+          fillColor: f.properties.color,
+          fillOpacity: 0.6
+        })
+      }).addTo(map);
 
-        const layer = L.geoJSON(data, {
-          style: feature => ({
-            color: '#333',
-            weight: 1,
-            fillColor: feature.properties.color,
-            fillOpacity: 0.6
+      const labelTargets = {
+        182: '选区1',
+        40:  '选区2',
+        157: '选区3',
+        6:   '选区4',
+        66:  '选区5',
+        54:  '选区6',
+        119: '选区7'
+      };
+
+      layer.eachLayer(l => {
+        const id = l.feature.properties.OBJECTID;
+        if (!labelTargets[id]) return;
+
+        const center = l.getBounds().getCenter();
+
+        L.marker(center, {
+          icon: L.divIcon({
+            className: 'district-label',
+            html: labelTargets[id],
+            iconSize: null
           })
         }).addTo(map);
-
-        // 你给过的 OBJECTID 对应表
-        const labelTargets = {
-          182: '选区1',
-          40:  '选区2',
-          157: '选区3',
-          6:   '选区4',
-          66:  '选区5',
-          54:  '选区6',
-          119: '选区7'
-        };
-
-        layer.eachLayer(l => {
-          const f = l.feature;
-          const id = f.properties.OBJECTID;
-
-          if (!labelTargets[id]) return;
-
-          const center = l.getBounds().getCenter();
-
-          const marker = L.marker(center, {
-            icon: L.divIcon({
-              className: 'district-label',
-              html: labelTargets[id],
-              iconSize: [0, 0]
-            })
-          }).addTo(map);
-
-          labelElements.push(marker);
-        });
-
-        // 根据缩放级别动态缩放文字
-        function updateLabelScale() {
-          const zoom = map.getZoom();
-          const scale = zoom / 11; // 11 是你现在的“舒服基准”
-
-          document.querySelectorAll('.district-label').forEach(el => {
-            el.style.transform = `scale(${scale})`;
-          });
-        }
-
-        updateLabelScale();
-        map.on('zoom', updateLabelScale);
       });
-  </script>
+
+      function updateLabelScale() {
+        const z = map.getZoom();
+
+        let scale;
+        if (z <= 9)       scale = 0.35;
+        else if (z ===10) scale = 0.45;
+        else if (z ===11) scale = 0.6;
+        else if (z ===12) scale = 0.8;
+        else if (z ===13) scale = 1.0;
+        else if (z ===14) scale = 1.15;
+        else              scale = 1.25;
+
+        document.querySelectorAll('.district-label').forEach(el => {
+          el.style.transform = `scale(${scale})`;
+        });
+      }
+
+      updateLabelScale();
+      map.on('zoomend', updateLabelScale);
+    });
+</script>
 </body>
 </html>
