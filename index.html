@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
   <meta charset="utf-8" />
   <title>Detroit Council Districts</title>
@@ -14,9 +14,6 @@
     src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
   </script>
 
-  <!-- polylabel：用于计算多边形“视觉中心” -->
-  <script src="https://unpkg.com/polylabel@1.1.0/polylabel.min.js"></script>
-
   <style>
     html, body, #map {
       height: 100%;
@@ -25,8 +22,8 @@
 
     /* 选区文字样式 */
     .district-label {
-      font-size: 14px;
-      font-weight: 600;
+      font-size: 18px;
+      font-weight: 700;
       color: #000;
       background: rgba(255,255,255,0.85);
       padding: 2px 6px;
@@ -34,24 +31,31 @@
       border: 1px solid #333;
       white-space: nowrap;
       text-align: center;
-      pointer-events: none;
     }
   </style>
 </head>
-
 <body>
   <div id="map"></div>
 
   <script>
-    // 初始化地图
     const map = L.map('map').setView([42.35, -83.1], 11);
 
-    // 底图（与你现在看到的一致）
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap & CARTO'
+    // 底图
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // 加载 GeoJSON
+    // 👉 人工指定：每个选区只用一个 OBJECTID 当锚点
+    const labelTargets = {
+      182: '选区1',
+      40:  '选区2',
+      157: '选区3',
+      6:   '选区4',
+      66:  '选区5',
+      81:  '选区6',
+      119: '选区7'
+    };
+
     fetch('District.geojson')
       .then(res => res.json())
       .then(data => {
@@ -65,31 +69,24 @@
           })
         }).addTo(map);
 
-        // === 每个 district 只标一个文字 ===
-        const done = new Set();
-
+        // 遍历每一个 polygon
         layer.eachLayer(l => {
           const f = l.feature;
-          const d = f.properties.council_district;
+          const id = f.properties.OBJECTID;
 
-          if (done.has(d)) return;
-          done.add(d);
+          // 只在你指定的那 7 个 OBJECTID 上放字
+          if (!(id in labelTargets)) return;
 
-          // Polygon / MultiPolygon 统一处理
-          const coords =
-            f.geometry.type === 'Polygon'
-              ? f.geometry.coordinates
-              : f.geometry.coordinates[0];
+          // 用该 polygon 的 bounds 中心点（人工选块，已足够精确）
+          const center = l.getBounds().getCenter();
 
-          // polylabel 算“视觉中心”
-          const [x, y] = polylabel(coords, 1.0);
-
-          L.marker([y, x], {
+          L.marker(center, {
+            interactive: false,
             icon: L.divIcon({
               className: 'district-label',
-              html: `选区${d}`,
-              iconSize: [60, 20],
-              iconAnchor: [30, 10]
+              html: labelTargets[id],
+              iconSize: [60, 24],
+              iconAnchor: [30, 12]
             })
           }).addTo(map);
         });
