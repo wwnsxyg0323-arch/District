@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <title>Detroit Council Districts</title>
@@ -10,9 +10,7 @@
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   />
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
-  </script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
     html, body, #map {
@@ -20,17 +18,17 @@
       margin: 0;
     }
 
-    /* 选区文字样式 */
+    /* 关键：去掉白底，只留文字 */
     .district-label {
-      font-size: 18px;
+      font-size: 14px;
       font-weight: 700;
       color: #000;
-      background: rgba(255,255,255,0.85);
-      padding: 2px 6px;
-      border-radius: 4px;
-      border: 1px solid #333;
       white-space: nowrap;
-      text-align: center;
+      text-shadow:
+        -1px -1px 0 #fff,
+         1px -1px 0 #fff,
+        -1px  1px 0 #fff,
+         1px  1px 0 #fff; /* 白色描边，保证在深色区也清楚 */
     }
   </style>
 </head>
@@ -40,19 +38,18 @@
   <script>
     const map = L.map('map').setView([42.35, -83.1], 11);
 
-    // 底图
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // 👉 人工指定：每个选区只用一个 OBJECTID 当锚点
+    // 你指定的「一个区选一个 OBJECTID」
     const labelTargets = {
       182: '选区1',
       40:  '选区2',
       157: '选区3',
       6:   '选区4',
       66:  '选区5',
-      81:  '选区6',
+      54:  '选区6',
       119: '选区7'
     };
 
@@ -61,33 +58,30 @@
       .then(data => {
 
         const layer = L.geoJSON(data, {
-          style: feature => ({
+          style: f => ({
             color: '#333',
             weight: 1,
-            fillColor: feature.properties.color,
+            fillColor: f.properties.color,
             fillOpacity: 0.6
           })
         }).addTo(map);
 
-        // 遍历每一个 polygon
         layer.eachLayer(l => {
           const f = l.feature;
           const id = f.properties.OBJECTID;
 
-          // 只在你指定的那 7 个 OBJECTID 上放字
           if (!(id in labelTargets)) return;
 
-          // 用该 polygon 的 bounds 中心点（人工选块，已足够精确）
+          // 用几何中心（你现在这套数据足够稳定）
           const center = l.getBounds().getCenter();
 
           L.marker(center, {
-            interactive: false,
             icon: L.divIcon({
               className: 'district-label',
               html: labelTargets[id],
-              iconSize: [60, 24],
-              iconAnchor: [30, 12]
-            })
+              iconSize: [0, 0]
+            }),
+            interactive: false
           }).addTo(map);
         });
       });
