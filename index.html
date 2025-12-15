@@ -1,12 +1,21 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <title>Detroit Council Districts</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+  </script>
+
+  <!-- polylabel：用于计算多边形“视觉中心” -->
+  <script src="https://unpkg.com/polylabel@1.1.0/polylabel.min.js"></script>
 
   <style>
     html, body, #map {
@@ -14,73 +23,77 @@
       margin: 0;
     }
 
+    /* 选区文字样式 */
     .district-label {
-      font-size: 16px;
-      font-weight: 700;
-      color: #111;
-      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: #000;
+      background: rgba(255,255,255,0.85);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #333;
       white-space: nowrap;
+      text-align: center;
       pointer-events: none;
-      text-shadow:
-        -1px -1px 0 #fff,
-         1px -1px 0 #fff,
-        -1px  1px 0 #fff,
-         1px  1px 0 #fff;
     }
   </style>
 </head>
 
 <body>
-<div id="map"></div>
+  <div id="map"></div>
 
-<script>
-  const map = L.map('map').setView([42.35, -83.1], 11);
+  <script>
+    // 初始化地图
+    const map = L.map('map').setView([42.35, -83.1], 11);
 
-  L.tileLayer(
-    'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    {
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
-      subdomains: 'abcd',
-      maxZoom: 19
-    }
-  ).addTo(map);
+    // 底图（与你现在看到的一致）
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap & CARTO'
+    }).addTo(map);
 
-  fetch('District.geojson')
-    .then(res => res.json())
-    .then(data => {
+    // 加载 GeoJSON
+    fetch('District.geojson')
+      .then(res => res.json())
+      .then(data => {
 
-      // 用来记录：每个 district 是否已经放过标签
-      const districtPlaced = {};
+        const layer = L.geoJSON(data, {
+          style: feature => ({
+            color: '#333',
+            weight: 1,
+            fillColor: feature.properties.color,
+            fillOpacity: 0.6
+          })
+        }).addTo(map);
 
-      L.geoJSON(data, {
-        style: feature => ({
-          color: '#333',
-          weight: 1,
-          fillColor: feature.properties.color,
-          fillOpacity: 0.6
-        }),
+        // === 每个 district 只标一个文字 ===
+        const done = new Set();
 
-        onEachFeature: (feature, layer) => {
-          const d = feature.properties.council_district;
+        layer.eachLayer(l => {
+          const f = l.feature;
+          const d = f.properties.council_district;
 
-          // 只给每个 district 放一次标签
-          if (!districtPlaced[d]) {
-            districtPlaced[d] = true;
+          if (done.has(d)) return;
+          done.add(d);
 
-            const center = layer.getBounds().getCenter();
+          // Polygon / MultiPolygon 统一处理
+          const coords =
+            f.geometry.type === 'Polygon'
+              ? f.geometry.coordinates
+              : f.geometry.coordinates[0];
 
-            L.marker(center, {
-              interactive: false,
-              icon: L.divIcon({
-                className: 'district-label',
-                html: `选区${d}`
-              })
-            }).addTo(map);
-          }
-        }
-      }).addTo(map);
+          // polylabel 算“视觉中心”
+          const [x, y] = polylabel(coords, 1.0);
 
-    });
-</script>
+          L.marker([y, x], {
+            icon: L.divIcon({
+              className: 'district-label',
+              html: `选区${d}`,
+              iconSize: [60, 20],
+              iconAnchor: [30, 10]
+            })
+          }).addTo(map);
+        });
+      });
+  </script>
 </body>
 </html>
