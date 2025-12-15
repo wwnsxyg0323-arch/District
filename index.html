@@ -5,7 +5,6 @@
   <title>Detroit Council Districts</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -15,9 +14,8 @@
       margin: 0;
     }
 
-    /* 选区文字标签样式 */
     .district-label {
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 700;
       color: #111;
       text-align: center;
@@ -36,10 +34,8 @@
 <div id="map"></div>
 
 <script>
-  // 初始化地图
   const map = L.map('map').setView([42.35, -83.1], 11);
 
-  // 底图（移动端稳定）
   L.tileLayer(
     'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
     {
@@ -49,10 +45,12 @@
     }
   ).addTo(map);
 
-  // 加载 District GeoJSON
   fetch('District.geojson')
     .then(res => res.json())
     .then(data => {
+
+      // 用来记录：每个 district 是否已经放过标签
+      const districtPlaced = {};
 
       L.geoJSON(data, {
         style: feature => ({
@@ -65,8 +63,10 @@
         onEachFeature: (feature, layer) => {
           const d = feature.properties.council_district;
 
-          // 只处理 1–7
-          if (d >= 1 && d <= 7) {
+          // 只给每个 district 放一次标签
+          if (!districtPlaced[d]) {
+            districtPlaced[d] = true;
+
             const center = layer.getBounds().getCenter();
 
             L.marker(center, {
