@@ -5,6 +5,7 @@
   <title>Detroit Council Districts</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <!-- Leaflet -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -24,12 +25,20 @@
   <div id="map"></div>
 
   <script>
+    // 初始化地图
     const map = L.map('map').setView([42.35, -83.1], 11);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+    // ✅【方案一】Carto 底图（对手机端最稳定）
+    L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 19
+      }
+    ).addTo(map);
 
+    // 加载 GeoJSON（注意文件名要和仓库里一致）
     fetch('District.geojson')
       .then(res => res.json())
       .then(data => {
