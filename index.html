@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
   <meta charset="utf-8" />
   <title>Detroit Council Districts</title>
@@ -18,17 +18,14 @@
       margin: 0;
     }
 
-    /* 关键：去掉白底，只留文字 */
+    /* 选区文字样式（无白底） */
     .district-label {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 700;
       color: #000;
       white-space: nowrap;
-      text-shadow:
-        -1px -1px 0 #fff,
-         1px -1px 0 #fff,
-        -1px  1px 0 #fff,
-         1px  1px 0 #fff; /* 白色描边，保证在深色区也清楚 */
+      transform-origin: center center;
+      pointer-events: none;
     }
   </style>
 </head>
@@ -42,48 +39,64 @@
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // 你指定的「一个区选一个 OBJECTID」
-    const labelTargets = {
-      182: '选区1',
-      40:  '选区2',
-      157: '选区3',
-      6:   '选区4',
-      66:  '选区5',
-      54:  '选区6',
-      119: '选区7'
-    };
+    // 记录所有标签 DOM
+    const labelElements = [];
 
     fetch('District.geojson')
       .then(res => res.json())
       .then(data => {
 
         const layer = L.geoJSON(data, {
-          style: f => ({
+          style: feature => ({
             color: '#333',
             weight: 1,
-            fillColor: f.properties.color,
+            fillColor: feature.properties.color,
             fillOpacity: 0.6
           })
         }).addTo(map);
+
+        // 你给过的 OBJECTID 对应表
+        const labelTargets = {
+          182: '选区1',
+          40:  '选区2',
+          157: '选区3',
+          6:   '选区4',
+          66:  '选区5',
+          54:  '选区6',
+          119: '选区7'
+        };
 
         layer.eachLayer(l => {
           const f = l.feature;
           const id = f.properties.OBJECTID;
 
-          if (!(id in labelTargets)) return;
+          if (!labelTargets[id]) return;
 
-          // 用几何中心（你现在这套数据足够稳定）
           const center = l.getBounds().getCenter();
 
-          L.marker(center, {
+          const marker = L.marker(center, {
             icon: L.divIcon({
               className: 'district-label',
               html: labelTargets[id],
               iconSize: [0, 0]
-            }),
-            interactive: false
+            })
           }).addTo(map);
+
+          labelElements.push(marker);
         });
+
+        // 根据缩放级别动态缩放文字
+        function updateLabelScale() {
+          const zoom = map.getZoom();
+          const scale = zoom / 11; // 11 是你现在的“舒服基准”
+
+          document.querySelectorAll('.district-label').forEach(el => {
+            el.style.transform = `scale(${scale})`;
+          });
+        }
+
+        updateLabelScale();
+        map.on('zoom', updateLabelScale);
       });
   </script>
 </body>
